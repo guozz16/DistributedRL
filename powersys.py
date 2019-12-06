@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 VUNIT = 0.001 #p.u.
 QUNIT = 0.01 #p.u.
 class Agent():
-	def __init__(self,PowerSys,Node,q_table=None):
+	def __init__(self,PowerSys,Node,k=0):
 		assert any(PowerSys.case['bus'][:,BUS_I]==Node),'There is no bus %d at powersys. '%Node
 		assert any(PowerSys.case['gen'][:,GEN_BUS]==Node),'There is no gen at bus %d. '%Node
 		self.powersys = PowerSys
@@ -26,12 +26,15 @@ class Agent():
 		self.node = find(self.powersys.case['bus'][:,BUS_I]==Node)[0]
 		self.node_g = self.powersys.b2g[self.node]
 		self.type = int(self.powersys.case['bus'][self.node,BUS_TYPE])
-		self.brain = QLearningTable([-1,-0.001,0.001,1],q_table=q_table) # two actions -1 for up 1 for down 0 for remain
+		if k==0: # Initial Q-table
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'])
+		else: # Load trained Q-table
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],q_table='Agent'+str(self.bus_i)+'.csv') # two actions -1 for up 1 for down 0 for remain
 		self.nodes = self._getNeighbour()
 		self.state = self._getState()
 
+	# Get local state including VM VA of neighbour nodes
 	def _getState(self):
-		# Get local state including VM VA of neighbour nodes
 		temp = '%.3f'%self.powersys.results['bus'][self.node,VM]+'|'+\
 		'%.1f'%self.powersys.results['bus'][self.node,VA]+'|'
 		for i in self.nodes:
@@ -39,15 +42,16 @@ class Agent():
 			'%.3f'%self.powersys.results['bus'][i,VM]+'|'\
 			'%.1f'%self.powersys.results['bus'][i,VA]+'|'
 		return temp
+	# Choose action based on local state
 	def choose(self):
-		# Choose action based on local state
 		self.action = self.brain.choose_action(self.state)
+	# Execute chosen action
 	def move(self):
-		# Change relevant variable
 		if self.type == 1:
 			self.powersys.ppc['gen'][self.node_g,QG] += float(self.action)*QUNIT
 		else :
 			self.powersys.ppc['gen'][self.node_g,VG] += float(self.action)*VUNIT
+	# generate neighbour node set
 	def _getNeighbour(self):
 		# Get neighbour nodes based on topology
 		temp = []
@@ -61,14 +65,18 @@ class Agent():
 			for i in _list:
 				temp.append(find(self.powersys.case['bus'][:,BUS_I]==self.powersys.case['branch'][i,F_BUS])[0])
 		return temp
+	# learn from last move
 	def learn(self,reward):
 		# learn from global reward info
 		_state = self._getState()
-		self.brain.learn(self.state,self.action,reward,_state)
+		self.brain.learn(self.state,str(self.action),reward,_state)
 		self.state = _state
 		# self.save()
+	# save training result
 	def save(self):
 		self.brain.q_table.to_csv('Agent'+str(self.bus_i)+'.csv')
+	def close(self):
+		self.powersys.agents.remove(self)
 
 class PowerSys():
 	def __init__(self,case):
@@ -133,18 +141,26 @@ class PowerSys():
 			r_ = 0
 			print('Voltage violated bus list',bi_min)
 			d_ = True
-		# #check for P violation
-		# if any(self.results['gen'][:,PG]>self.results['gen'][:,PMAX]) or any(self.results['gen'][:,PG]<self.results['gen'][:,PMIN]):
-		# 	r_ = 0
-		# 	d_ = True
-		# #check for Q violation
-		# if any(self.results['gen'][:,QG]>self.results['gen'][:,QMAX]) or any(self.results['gen'][:,QG]<self.results['gen'][:,QMIN]):
-		# 	r_ = 0
-		# 	d_ = True
+		#check for P violation
+		if any(self.results['gen'][:,PG]>self.results['gen'][:,PMAX]) or any(self.results['gen'][:,PG]<self.results['gen'][:,PMIN]):
+			r_ = 0
+			d_ = True
+		#check for Q violation
+		if any(self.results['gen'][:,QG]>self.results['gen'][:,QMAX]) or any(self.results['gen'][:,QG]<self.results['gen'][:,QMIN]):
+			r_ = 0
+			d_ = True
 		for agent in self.agents:
 			agent.learn(r_)
 		return d_
-	def render(self):
+	def change(self):
+		#random load change
+		temp_bus = np.random.choice(self.ppc['bus'][:,0])
+		temp_i = find(self.ppc['bus'][:,0]==temp_bus)[0]
+		temp_change = np.random.randn()
+		temp_load = self.ppc['bus'][temp_i,3]+temp_change
+		print('Bus %d change reactive load from %.2f to %.2f. '%(int(temp_bus),self.ppc['bus'][temp_i,3],temp_load))
+		self.ppc['bus'][temp_i,3] = temp_load
+	def render(self,k=0):
 		#visualize power flow
 		g1 = nx.DiGraph() # P flow
 		g2 = nx.DiGraph() # Q flow
@@ -198,5 +214,6 @@ class PowerSys():
 		    edge_cmap=self.cmap,arrows=True)
 		nx.draw_networkx_labels(g2, self.pos)
 		plt.savefig("Figure_2.png",dpi=150)
-		# plt.show()
+		if k==1:
+			plt.show()
 

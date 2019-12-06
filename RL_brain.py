@@ -4,9 +4,7 @@ This part of code is the Q learning brain, which is a brain of the agent.
 
 import numpy as np
 import pandas as pd
-pd.set_option('display.width', 20)  # 设置字符显示宽度
-pd.set_option('display.max_rows', None)  # 设置显示最大行
-np.set_printoptions(threshold=np.inf)
+
 class QLearningTable:
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9, q_table=None):
         self.actions = actions  # a list
@@ -42,6 +40,7 @@ class QLearningTable:
 
     def check_state_exist(self, state):
         if state not in self.q_table.index:
+            print('aha')
             # append new state to q table
             self.q_table = self.q_table.append(
                 pd.Series(
