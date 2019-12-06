@@ -29,7 +29,7 @@ class Agent():
 		if k==0: # Initial Q-table
 			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'])
 		else: # Load trained Q-table
-			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],q_table='Agent'+str(self.bus_i)+'.csv') # two actions -1 for up 1 for down 0 for remain
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],q_table='Agent'+str(self.bus_i)+'.csv') # -1 for up 1 for down 0 for remain
 		self.nodes = self._getNeighbour()
 		self.state = self._getState()
 
@@ -125,29 +125,30 @@ class PowerSys():
 		#update power flow
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		loss_ = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
-		if loss_ <= self.loss:
-			r_ = 1
-		else:
-			r_ = 0
+		r_ = self.loss - loss_
+		# if loss_ <= self.loss:
+		# 	r_ = 1
+		# else:
+		# 	r_ = 0
 		self.loss = loss_
 		# check for voltage violation
 		bi_max = find(self.results['bus'][:,VM]-0.001>self.results['bus'][:,VMAX])
 		bi_min = find(self.results['bus'][:,VM]+0.001<self.results['bus'][:,VMIN])
 		if bi_max.size is not 0:
-			r_ = 0
+			r_ = -1
 			print('Voltage violated bus list',bi_max)
 			d_ = True
 		elif bi_min.size is not 0:
-			r_ = 0
+			r_ = -1
 			print('Voltage violated bus list',bi_min)
 			d_ = True
 		#check for P violation
 		if any(self.results['gen'][:,PG]>self.results['gen'][:,PMAX]) or any(self.results['gen'][:,PG]<self.results['gen'][:,PMIN]):
-			r_ = 0
+			r_ = -1
 			d_ = True
 		#check for Q violation
 		if any(self.results['gen'][:,QG]>self.results['gen'][:,QMAX]) or any(self.results['gen'][:,QG]<self.results['gen'][:,QMIN]):
-			r_ = 0
+			r_ = -1
 			d_ = True
 		for agent in self.agents:
 			agent.learn(r_)
@@ -158,7 +159,7 @@ class PowerSys():
 		temp_i = find(self.ppc['bus'][:,0]==temp_bus)[0]
 		temp_change = np.random.randn()
 		temp_load = self.ppc['bus'][temp_i,3]+temp_change
-		print('Bus %d change reactive load from %.2f to %.2f. '%(int(temp_bus),self.ppc['bus'][temp_i,3],temp_load))
+		print('Change reactive load from %.2f to %.2f [Bus %d] '%(self.ppc['bus'][temp_i,3],temp_load,int(temp_bus)))
 		self.ppc['bus'][temp_i,3] = temp_load
 	def render(self,k=0):
 		#visualize power flow
