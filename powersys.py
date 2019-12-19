@@ -1,5 +1,6 @@
 from RL_brain import QLearningTable 
 from pypower.api import ppoption, runpf
+from pypower.api import case30 as case
 from pypower.idx_bus import PD, QD, VM, VA, GS, BUS_TYPE, PQ, PV, REF, BUS_I, VMAX, VMIN
 from pypower.idx_brch import PF, QF, F_BUS, T_BUS
 from pypower.idx_gen import PG, QG, VG, PMAX, PMIN, QMAX, QMIN, GEN_BUS, GEN_STATUS
@@ -18,18 +19,19 @@ VUNIT = 0.001 #p.u.
 QUNIT = 0.01 #p.u.
 class Agent():
 	def __init__(self,PowerSys,Node,k=0):
-		assert any(PowerSys.case['bus'][:,BUS_I]==Node),'There is no bus %d at powersys. '%Node
-		assert any(PowerSys.case['gen'][:,GEN_BUS]==Node),'There is no gen at bus %d. '%Node
+		assert any(PowerSys.ppc['bus'][:,BUS_I]==Node),'There is no bus %d at powersys. '%Node
+		assert any(PowerSys.ppc['gen'][:,GEN_BUS]==Node),'There is no gen at bus %d. '%Node
 		self.powersys = PowerSys
 		self.powersys.agents.append(self)
 		self.bus_i = Node
-		self.node = find(self.powersys.case['bus'][:,BUS_I]==Node)[0]
+		self.node = find(self.powersys.ppc['bus'][:,BUS_I]==Node)[0]
 		self.node_g = self.powersys.b2g[self.node]
-		self.type = int(self.powersys.case['bus'][self.node,BUS_TYPE])
+		self.type = int(self.powersys.ppc['bus'][self.node,BUS_TYPE])
 		if k==0: # Initial Q-table
-			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'])
+			self.brain = QLearningTable(['-0.3','0','0.3'])
 		else: # Load trained Q-table
-			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],q_table='Agent'+str(self.bus_i)+'.csv') # -1 for up 1 for down 0 for remain
+			self.brain = QLearningTable(['-0.3','0','0.3'],\
+			q_table='Agent'+str(self.bus_i)+'.csv') # -1 for up 1 for down 0 for remain
 		self.nodes = self._getNeighbour()
 		self.state = self._getState()
 
@@ -56,14 +58,14 @@ class Agent():
 		# Get neighbour nodes based on topology
 		temp = []
 		_list = []
-		if any(self.powersys.case['branch'][:,F_BUS]==self.bus_i):
-			_list = find(self.powersys.case['branch'][:,F_BUS]==self.bus_i)
+		if any(self.powersys.ppc['branch'][:,F_BUS]==self.bus_i):
+			_list = find(self.powersys.ppc['branch'][:,F_BUS]==self.bus_i)
 			for i in _list:
-				temp.append(find(self.powersys.case['bus'][:,BUS_I]==self.powersys.case['branch'][i,T_BUS])[0])
-		if any(self.powersys.case['branch'][:,T_BUS]==self.bus_i):
-			_list = find(self.powersys.case['branch'][:,T_BUS]==self.bus_i)
+				temp.append(find(self.powersys.ppc['bus'][:,BUS_I]==self.powersys.ppc['branch'][i,T_BUS])[0])
+		if any(self.powersys.ppc['branch'][:,T_BUS]==self.bus_i):
+			_list = find(self.powersys.ppc['branch'][:,T_BUS]==self.bus_i)
 			for i in _list:
-				temp.append(find(self.powersys.case['bus'][:,BUS_I]==self.powersys.case['branch'][i,F_BUS])[0])
+				temp.append(find(self.powersys.ppc['bus'][:,BUS_I]==self.powersys.ppc['branch'][i,F_BUS])[0])
 		return temp
 	# learn from last move
 	def learn(self,reward):
@@ -71,7 +73,12 @@ class Agent():
 		_state = self._getState()
 		self.brain.learn(self.state,str(self.action),reward,_state)
 		self.state = _state
-		# self.save()
+	# learn from last move
+	def info_learn(self,reward):
+		# learn from global reward info
+		_state = self._getState()
+		self.brain.info_learn(self.state,str(self.action),reward,_state)
+		self.state = _state	
 	# save training result
 	def save(self):
 		self.brain.q_table.to_csv('Agent'+str(self.bus_i)+'.csv')
@@ -79,25 +86,25 @@ class Agent():
 		self.powersys.agents.remove(self)
 
 class PowerSys():
-	def __init__(self,case):
+	def __init__(self):
 		self.ppopt = ppoption(VERBOSE=0,OUT_ALL=0,OUT_SYS_SUM=False,\
 			OUT_BUS=False,OUT_BRANCH=False) # simplify runpf out info
-		self.case = case # assign case
+		self.ppc = case()
 		self.agents = []
 		self.b2g={} # map bus num to gen num
 		self.g2b={} # map gen num to bus num
-		for g in list(range(len(self.case['gen']))):
-			self.g2b[g] = find(self.case['bus'][:,BUS_I]==self.case['gen'][g,GEN_BUS])[0]
+		for g in list(range(len(self.ppc['gen']))):
+			self.g2b[g] = find(self.ppc['bus'][:,BUS_I]==self.ppc['gen'][g,GEN_BUS])[0]
 			self.b2g[self.g2b[g]] = g
-		self.pv=find(self.case['bus'][:,BUS_TYPE]==PV)
-		self.ref=find(self.case['bus'][:,BUS_TYPE]==REF)
-		self.pq=find(self.case['bus'][:,BUS_TYPE]==PQ)
+		self.pv=find(self.ppc['bus'][:,BUS_TYPE]==PV)
+		self.ref=find(self.ppc['bus'][:,BUS_TYPE]==REF)
+		self.pq=find(self.ppc['bus'][:,BUS_TYPE]==PQ)
 
 		#initialize graph layout and colormap
 		g_ = nx.Graph()
-		for bus in self.case['bus']:
+		for bus in self.ppc['bus']:
 		    g_.add_node(int(bus[BUS_I]))
-		for brch in self.case['branch']:
+		for brch in self.ppc['branch']:
 		    g_.add_edge(int(brch[F_BUS]),int(brch[T_BUS]))
 		self.pos = nx.kamada_kawai_layout(g_)
 		red_ = '#ff0000'   #red
@@ -107,27 +114,28 @@ class PowerSys():
 
 	def reset(self):
 		#initial pf
-		self.ppc = self.case
+		self.ppc = case()
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		self.loss = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
 	def getLoss(self):
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		self.loss = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
 		return self.loss
-	def step(self,k=0):
+	def step(self,info_flag=0):
 		d_=False
 		for agent in self.agents:
 			agent.choose()
 		for agent in self.agents:
 			agent.move()
-			if k==1:
-				print('Agent'+str(agent.bus_i)+':'+str(agent.action))
+			# print('Agent'+str(agent.bus_i)+':'+str(agent.action))
 		#update power flow
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		loss_ = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
+		# r_ = np.log2(self.loss/loss_)
+		# r_ = - loss_
 		r_ = self.loss - loss_
-		# if loss_ <= self.loss:
-		# 	r_ = 1
+		# if loss_ < self.loss:
+		# 	r_ = 1/loss_
 		# else:
 		# 	r_ = 0
 		self.loss = loss_
@@ -151,16 +159,24 @@ class PowerSys():
 			r_ = -1
 			d_ = True
 		for agent in self.agents:
-			agent.learn(r_)
+			if info_flag is 0:
+				agent.learn(r_)
+			else:
+				agent.info_learn(r_)
 		return d_
-	def change(self):
+	def change(self,k=0):
 		#random load change
-		temp_bus = np.random.choice(self.ppc['bus'][:,0])
-		temp_i = find(self.ppc['bus'][:,0]==temp_bus)[0]
-		temp_change = np.random.randn()
-		temp_load = self.ppc['bus'][temp_i,3]+temp_change
-		print('Change reactive load from %.2f to %.2f [Bus %d] '%(self.ppc['bus'][temp_i,3],temp_load,int(temp_bus)))
-		self.ppc['bus'][temp_i,3] = temp_load
+		if k == 0:
+			temp_bus = np.random.choice(self.ppc['bus'][:,0])
+			self.temp_i = find(self.ppc['bus'][:,0]==temp_bus)[0]
+			temp_change = np.random.randn()
+			self.temp_load = round(self.ppc['bus'][self.temp_i,QD]+temp_change,2)
+			print('Change reactive load from %.2f to %.2f [Bus %d] '%(self.ppc['bus'][self.temp_i,QD],self.temp_load,int(temp_bus)))
+			self.ppc['bus'][self.temp_i,QD] = self.temp_load
+		else:
+			self.ppc['bus'][self.temp_i,QD] = self.temp_load
+		self.results, self.success = runpf(self.ppc,self.ppopt)
+		self.loss = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
 	def render(self,k=0):
 		#visualize power flow
 		g1 = nx.DiGraph() # P flow
