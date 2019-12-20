@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
     
 class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.6, \
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.95, \
         e_greedy=0.9, q_table=None):
         self.actions = actions  # a list
         self.lr = learning_rate

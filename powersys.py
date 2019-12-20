@@ -138,7 +138,7 @@ class PowerSys():
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		loss_ = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
 		# r_ = np.log2(self.loss/loss_)
-		r_ = -self.loss
+		r_ = self.loss-loss_
 		# r_ = round(self.loss,4) - round(loss_,4)
 		# if loss_ < self.loss:
 		# 	r_ = 1

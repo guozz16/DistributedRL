@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 class Test():
 	def __init__(self,agent = [23,27]):
 		self.agent = agent
-	def train(self,history = 0, train_step = 20000,\
+	def train(self,history = 0, train_step = 2000,\
 		change_step = 300, train_change = 1,\
 		out_step = 20, info_flag = 0,\
 		render_step = 25, render = 0):
@@ -92,7 +92,7 @@ class Test():
 		return loss_reduction,info_reduction
 
 test = Test()
-test.train(history = 0)
+test.train(history = 0,train_change = 0)
 loss1 = test.train(history = 1)
 loss2 = test.train(history = 1, info_flag = 1)
 result = pd.DataFrame([loss1,loss2])
