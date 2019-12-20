@@ -185,7 +185,7 @@ class PowerSys():
 			self.ppc['bus'][self.temp_i,QD] = self.temp_load
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		self.loss = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
-	def render(self,k=0):
+	def render(self,k=0,name="Figure_2.png"):
 		#visualize power flow
 		g1 = nx.DiGraph() # P flow
 		g2 = nx.DiGraph() # Q flow
@@ -238,7 +238,7 @@ class PowerSys():
 		nx.draw_networkx_edges(g2, self.pos, width=2, alpha=0.5,edge_color=Q_colors,
 		    edge_cmap=self.cmap,arrows=True)
 		nx.draw_networkx_labels(g2, self.pos)
-		plt.savefig("Figure_2.png",dpi=150)
+		plt.savefig(name,dpi=150)
 		if k==1:
 			plt.show()
 
