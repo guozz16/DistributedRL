@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 VUNIT = 0.001 #p.u.
 QUNIT = 0.01 #p.u.
 class Agent():
-	def __init__(self,PowerSys,Node,k=0):
+	def __init__(self,PowerSys,Node,k=0,info_flag=0,e_greedy = 0.9):
 		assert any(PowerSys.ppc['bus'][:,BUS_I]==Node),'There is no bus %d at powersys. '%Node
 		assert any(PowerSys.ppc['gen'][:,GEN_BUS]==Node),'There is no gen at bus %d. '%Node
 		self.powersys = PowerSys
@@ -28,20 +28,23 @@ class Agent():
 		self.node_g = self.powersys.b2g[self.node]
 		self.type = int(self.powersys.ppc['bus'][self.node,BUS_TYPE])
 		if k==0: # Initial Q-table
-			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'])
-		else: # Load trained Q-table
-			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],\
-			q_table='Agent'+str(self.bus_i)+'.csv') # -1 for up 1 for down 0 for remain
+			self.brain = QLearningTable(['-0.1','0','0.1'],e_greedy = e_greedy)
+		elif info_flag == 0: # Load trained Q-table
+			self.brain = QLearningTable(['-0.1','0','0.1'],\
+			q_table='Agent'+str(self.bus_i)+'.csv',e_greedy = e_greedy) # -1 for up 1 for down 0 for remain
+		else:
+			self.brain = QLearningTable(['-0.1','0','0.1'],\
+			q_table='Info_Agent'+str(self.bus_i)+'.csv',e_greedy = e_greedy)
 		self.nodes = self._getNeighbour()
 		self.state = self._getState()
 
 	# Get local state including VM VA of neighbour nodes
 	def _getState(self):
-		temp = '%.3f'%self.powersys.results['bus'][self.node,VM]+'|'+\
+		temp = '%.4f'%self.powersys.results['bus'][self.node,VM]+'|'+\
 		'%.1f'%self.powersys.results['bus'][self.node,VA]+'|'
 		for i in self.nodes:
 			temp = temp + \
-			'%.3f'%self.powersys.results['bus'][i,VM]+'|'\
+			'%.4f'%self.powersys.results['bus'][i,VM]+'|'\
 			'%.1f'%self.powersys.results['bus'][i,VA]+'|'
 		return temp
 	# Choose action based on local state
@@ -80,8 +83,11 @@ class Agent():
 		self.brain.info_learn(self.state,str(self.action),reward,_state)
 		self.state = _state	
 	# save training result
-	def save(self):
-		self.brain.q_table.to_csv('Agent'+str(self.bus_i)+'.csv')
+	def save(self,info_flag=0):
+		if info_flag == 0:
+			self.brain.q_table.to_csv('Agent'+str(self.bus_i)+'.csv')
+		else:
+			self.brain.q_table.to_csv('Info_Agent'+str(self.bus_i)+'.csv')
 	def close(self):
 		self.powersys.agents.remove(self)
 
@@ -132,10 +138,12 @@ class PowerSys():
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		loss_ = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
 		# r_ = np.log2(self.loss/loss_)
-		# r_ = - loss_
-		r_ = self.loss - loss_
+		r_ = -self.loss
+		# r_ = round(self.loss,4) - round(loss_,4)
 		# if loss_ < self.loss:
-		# 	r_ = 1/loss_
+		# 	r_ = 1
+		# elif loss_>self.loss:
+		# 	r_ = -1
 		# else:
 		# 	r_ = 0
 		self.loss = loss_

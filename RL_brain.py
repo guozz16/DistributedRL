@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
     
 class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, \
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.6, \
         e_greedy=0.9, q_table=None):
         self.actions = actions  # a list
         self.lr = learning_rate
@@ -49,7 +49,7 @@ class QLearningTable:
         else:
             q_target = r  # next state is terminal
         freq = self.q_table.loc[s, 'MEMO']/self.q_table['MEMO'].sum()
-        self.q_table.loc[s, a] += self.lr * (q_target - q_predict) * (-np.log2(freq))/100 # update
+        self.q_table.loc[s, a] += self.lr * (q_target - q_predict) * (-np.log2(freq))/10 # update
 
     def check_state_exist(self, state):
         if state not in self.q_table.index:
