@@ -40,11 +40,11 @@ class Agent():
 
 	# Get local state including VM VA of neighbour nodes
 	def _getState(self):
-		temp = '%.4f'%self.powersys.results['bus'][self.node,VM]+'|'+\
+		temp = '%.3f'%self.powersys.results['bus'][self.node,VM]+'|'+\
 		'%.1f'%self.powersys.results['bus'][self.node,VA]+'|'
 		for i in self.nodes:
 			temp = temp + \
-			'%.4f'%self.powersys.results['bus'][i,VM]+'|'\
+			'%.3f'%self.powersys.results['bus'][i,VM]+'|'\
 			'%.1f'%self.powersys.results['bus'][i,VA]+'|'
 		return temp
 	# Choose action based on local state
@@ -185,7 +185,7 @@ class PowerSys():
 			self.ppc['bus'][self.temp_i,QD] = self.temp_load
 		self.results, self.success = runpf(self.ppc,self.ppopt)
 		self.loss = sum(self.results['gen'][:,PG])-sum(self.results['bus'][:,PD])
-	def render(self,k=0,name="Figure_2.png"):
+	def render(self,k=0,name1="Figure_1.png",name2="Figure_2.png"):
 		#visualize power flow
 		g1 = nx.DiGraph() # P flow
 		g2 = nx.DiGraph() # Q flow
@@ -222,7 +222,7 @@ class PowerSys():
 		nx.draw_networkx_edges(g1, self.pos, width=2, alpha=0.5,edge_color=P_colors,
 		    edge_cmap=self.cmap,arrows=True)
 		nx.draw_networkx_labels(g1, self.pos)
-		plt.savefig("Figure_1.png",dpi=150)
+		plt.savefig(name1,dpi=150)
 		# plt.show()
 		edges=nx.draw_networkx_edges(g2, self.pos, width=2, alpha=0.5,edge_color=Q_colors,
 		    edge_cmap=self.cmap,arrows=False)
@@ -238,7 +238,7 @@ class PowerSys():
 		nx.draw_networkx_edges(g2, self.pos, width=2, alpha=0.5,edge_color=Q_colors,
 		    edge_cmap=self.cmap,arrows=True)
 		nx.draw_networkx_labels(g2, self.pos)
-		plt.savefig(name,dpi=150)
+		plt.savefig(name2,dpi=150)
 		if k==1:
 			plt.show()
 

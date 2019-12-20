@@ -57,7 +57,7 @@ class Test():
 				agents = []
 				env.reset()
 				env.change(info_flag)
-				env.render(name = "initial.png")
+				env.render(name1 = "P1.png",name2 = "Q1.png")
 				initial_loss = env.loss
 				if info_flag == 0:
 					loss.append(initial_loss)
@@ -81,12 +81,12 @@ class Test():
 					_reduc = (loss[0]-loss[-1])/loss[0]
 					print('\nLoss reduction rate:[{:.2%}]'.format(_reduc))
 					loss_reduction.append(_reduc)
-					env.render(name = "Final.png")
+					env.render(name1 = "P2.png",name2 = "Q2.png")
 				else:
 					_reduc = (info_loss[0] - info_loss[-1]) / info_loss[0]
 					print('\nLoss reduction rate[:{:.2%}]'.format(_reduc))
 					info_reduction.append(_reduc)
-					env.render(name = "Info_Final.png")
+					env.render(name1 = "P3.png",name2 = "Q3.png")
 			plt.clf()
 			plt.plot(loss, label= 'traditional')
 			plt.plot(info_loss, label='info_theory')
@@ -95,7 +95,7 @@ class Test():
 		return loss_reduction,info_reduction
 
 test = Test()
-# test.train(history = 0,train_change = 0)
+test.train(history = 0,train_change = 0)
 loss1 = test.train(history = 1)
 loss2 = test.train(history = 1, info_flag = 1)
 result = pd.DataFrame([loss1,loss2])
