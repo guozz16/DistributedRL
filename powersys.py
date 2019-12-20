@@ -28,12 +28,12 @@ class Agent():
 		self.node_g = self.powersys.b2g[self.node]
 		self.type = int(self.powersys.ppc['bus'][self.node,BUS_TYPE])
 		if k==0: # Initial Q-table
-			self.brain = QLearningTable(['-0.1','0','0.1'],e_greedy = e_greedy)
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],e_greedy = e_greedy)
 		elif info_flag == 0: # Load trained Q-table
-			self.brain = QLearningTable(['-0.1','0','0.1'],\
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],\
 			q_table='Agent'+str(self.bus_i)+'.csv',e_greedy = e_greedy) # -1 for up 1 for down 0 for remain
 		else:
-			self.brain = QLearningTable(['-0.1','0','0.1'],\
+			self.brain = QLearningTable(['-1','-0.3','0','0.3','1'],\
 			q_table='Info_Agent'+str(self.bus_i)+'.csv',e_greedy = e_greedy)
 		self.nodes = self._getNeighbour()
 		self.state = self._getState()
