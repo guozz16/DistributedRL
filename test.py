@@ -44,7 +44,7 @@ class Test():
 			agent.save(info_flag)
 			agent.close()
 		return loss
-	def test(self, test_episode = 10, test_step = 30, test_save = 0):
+	def test(self, test_episode = 5, test_step = 300, test_save = 0):
 		env = PowerSys()
 		loss_reduction=[]
 		info_reduction=[]
@@ -92,9 +92,9 @@ class Test():
 		return loss_reduction,info_reduction
 
 test = Test()
-test.train(history = 0,train_change = 0)
-loss1 = test.train(history = 1)
-loss2 = test.train(history = 1, info_flag = 1)
-result = pd.DataFrame([loss1,loss2])
-result.to_csv('result.csv')
+# test.train(history = 0,train_change = 0)
+# loss1 = test.train(history = 1)
+# loss2 = test.train(history = 1, info_flag = 1)
+# result = pd.DataFrame([loss1,loss2])
+# result.to_csv('result.csv')
 print(test.test())
