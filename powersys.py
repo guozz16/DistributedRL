@@ -130,6 +130,8 @@ class PowerSys():
 	def step(self,info_flag=0):
 		d_=False
 		for agent in self.agents:
+			agent.state = agent._getState()
+		for agent in self.agents:
 			agent.choose()
 		for agent in self.agents:
 			agent.move()
